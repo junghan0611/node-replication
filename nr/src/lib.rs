@@ -64,7 +64,7 @@
 //!    }
 //! }
 //! ```
-#![no_std]
+//#![no_std]
 #![feature(new_uninit)]
 #![feature(get_mut_unchecked)]
 #![feature(negative_impls)]
@@ -76,6 +76,8 @@ extern crate alloc;
 extern crate core;
 
 extern crate crossbeam_utils;
+
+extern crate pmdk;
 
 #[macro_use]
 extern crate log as logging;
