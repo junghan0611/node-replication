@@ -7,6 +7,8 @@ use std::sync::Arc;
 use node_replication::Dispatch;
 use node_replication::Log;
 use node_replication::Replica;
+use node_replication::PVec;
+extern crate pmdk;
 
 /// We support mutable push and pop operations on the stack.
 #[derive(Clone, Debug, PartialEq)]
@@ -22,8 +24,8 @@ enum Access {
 }
 
 /// The actual stack, it uses a single-threaded Vec.
-struct Stack {
-    storage: Vec<u32>,
+struct Stack {    
+    storage: PVec<u32>,
 }
 
 impl Default for Stack {
@@ -77,9 +79,14 @@ impl Dispatch for Stack {
 /// We initialize a log, and two replicas for a stack, register with the replica
 /// and then execute operations.
 fn main() {
+    
+    let path = String::from("/mnt/pmem0/test.pool");
+    let mut pool = pmdk::ObjPool::new::<_, String>(path, None, 0x1000, 0x1000_0000 / 0x1000).unwrap();
+    pool.set_rm_on_drop(true);
+
     // The operation log for storing `WriteOperation`, it has a size of 2 MiB:
     let log = Arc::new(Log::<<Stack as Dispatch>::WriteOperation>::new(
-        2 * 1024 * 1024,
+        2 * 1024 * 1024, &mut pool
     ));
 
     // Next, we create two replicas of the stack

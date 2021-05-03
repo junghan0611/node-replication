@@ -205,7 +205,7 @@ where
                     .expect("Alignment error while allocating the shared log!"),
             )*/
 
-            pool.allocate(bytes, 10_000 as u64, None)
+            pool.allocate(bytes, 0 as u64, None)
             .unwrap()
             .as_mut_ptr()
         };

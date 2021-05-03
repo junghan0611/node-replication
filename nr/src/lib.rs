@@ -89,7 +89,9 @@ mod context;
 mod log;
 mod replica;
 pub mod rwlock;
+pub mod pvec;
 
+pub use pvec::PVec;
 pub use crate::log::Log;
 pub use replica::{Replica, ReplicaToken, MAX_THREADS_PER_REPLICA};
 
