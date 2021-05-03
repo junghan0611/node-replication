@@ -111,7 +111,7 @@ where
 
     /// The underlying replicated data structure. Shared between threads registered
     /// with this replica. Each replica maintains its own.
-    data: CachePadded<RwLock<D>>,
+    pub data: CachePadded<RwLock<D>>,
 }
 
 /// The Replica is Sync. Member variables are protected by a CAS on `combiner`.
@@ -216,7 +216,8 @@ where
                         ),
                     ),
                 slog: log.clone(),
-                data: CachePadded::new(RwLock::<D>::default()),
+                //data: CachePadded::new(RwLock::<D>::default()),
+                data: CachePadded::new(RwLock::<D>::new(log.objpool.as_mut().unwrap())),
             });
 
             let mut replica = uninit_replica.assume_init();

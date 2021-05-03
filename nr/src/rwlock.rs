@@ -68,11 +68,17 @@ where
     fn default() -> RwLock<T> {
         use arr_macro::arr;
 
-        RwLock {
+        println!{"default: RwLock1"};
+
+        let ret = RwLock {
             wlock: CachePadded::new(AtomicBool::new(false)),
             rlock: arr![Default::default(); 192],
             data: UnsafeCell::new(T::default()),
-        }
+        };
+
+        println!{"default: RwLock2"};
+
+        ret
     }
 }
 
@@ -80,6 +86,16 @@ impl<T> RwLock<T>
 where
     T: Sized + Default + Sync,
 {
+    pub fn new(pool: &mut pmdk::ObjPool) -> RwLock<T>{
+        use arr_macro::arr;
+        
+        RwLock {
+            wlock: CachePadded::new(AtomicBool::new(false)),
+            rlock: arr![Default::default(); 192],
+            data: UnsafeCell::new(T::default()),
+            //data: UnsafeCell::new(T::new()),
+        }
+    }
     /// Locks the underlying data-structure for writes. The caller can retrieve
     /// a mutable reference from the returned `WriteGuard`.
     ///
@@ -99,7 +115,7 @@ where
     ///     const N_CONCURRENT_READERS: usize = 32;
     ///     let mut w_guard = lock.write(N_CONCURRENT_READERS);
     ///     *w_guard = 777;
-    /// ```
+    /// ```  
     pub fn write(&self, n: usize) -> WriteGuard<T> {
         // First, wait until we can acquire the writer lock.
         loop {

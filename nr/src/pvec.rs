@@ -3,12 +3,11 @@ use std::ptr::NonNull;
 use std::{alloc, borrow::BorrowMut, u8};
 use core::default::Default;
 
+use pmdk::ObjPool;
+
 extern crate pmdk;
 
-pub struct PVec<T>
-where
-    T: Sized + Default + Sync,
-{
+pub struct PVec<T> {
     //ptr: NonNull<T>,
     ptr: *mut T,
     len: usize,
@@ -16,31 +15,37 @@ where
     pool: *mut pmdk::ObjPool,
 }
 
-impl<T> Default for PVec<T>
-where
-    T: Sized + Default + Sync,
-{
+unsafe impl Send for PVec<u32> {}
+unsafe impl Sync for PVec<u32> {}
+
+impl<T> Default for PVec<T> {
     fn default() -> PVec<T> {
-        PVec {
+        println!("default PVec");
+        PVec {            
             ptr: 0 as *mut T,
             len: 0,
             capacity: 0,
             pool: 0 as *mut pmdk::ObjPool,
-        }
+        }            
     }
 }
 
-impl<T> PVec<T> where
-T: Sized + Default + Sync,
-{
-    pub fn new(new_pool: &mut pmdk::ObjPool) -> Self {
+impl<T> PVec<T> {
+    //pub fn new(new_pool: &mut pmdk::ObjPool) -> Self {
+    pub fn new() -> Self {
+        println!("NEW PVEC");
         Self {
             //ptr: NonNull::dangling(),
             ptr: 0 as *mut T,
             len: 0,
             capacity: 0,
-            pool: new_pool,
+            //pool: new_pool,
+            pool: 0 as *mut pmdk::ObjPool,
         }
+    }
+
+    pub fn set_pool(&mut self, _pool: &mut pmdk::ObjPool){
+        self.pool = _pool;
     }
 
     pub fn push(&mut self, item: T) {

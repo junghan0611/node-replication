@@ -89,9 +89,10 @@ mod context;
 mod log;
 mod replica;
 pub mod rwlock;
-pub mod pvec;
 
+pub mod pvec;
 pub use pvec::PVec;
+
 pub use crate::log::Log;
 pub use replica::{Replica, ReplicaToken, MAX_THREADS_PER_REPLICA};
 
@@ -118,6 +119,11 @@ pub trait Dispatch {
     /// The type on the value returned by the data structure when a `ReadOperation` or a
     /// `WriteOperation` successfully executes against it.
     type Response: Sized + Clone;
+
+    /*type SetupOperation: Sized + Clone + PartialEq + Debug;
+
+    //fn pmsetup(&mut self, pool: &mut pmdk::ObjPool);
+    fn dispatch_setup(&mut self, op: Self::SetupOperation) -> Self::Response;*/
 
     /// Method on the data structure that allows a read-only operation to be
     /// executed against it.

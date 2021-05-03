@@ -129,7 +129,7 @@ where
     /// track log wrap-arounds for each of them separately.
     lmasks: [CachePadded<Cell<bool>>; MAX_REPLICAS],
 
-    objpool: *mut pmdk::ObjPool,
+    pub objpool: *mut pmdk::ObjPool,
 }
 
 impl<'a, T> fmt::Debug for Log<'a, T>
