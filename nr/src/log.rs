@@ -16,6 +16,8 @@ use crossbeam_utils::CachePadded;
 use crate::context::MAX_PENDING_OPS;
 use crate::replica::MAX_THREADS_PER_REPLICA;
 
+use crate::PMPOOL;
+
 /// The default size of the shared log in bytes. If constructed using the
 /// default constructor, the log will be these many bytes in size. Currently
 /// set to 32 MiB based on the ASPLOS 2017 paper.
@@ -127,9 +129,7 @@ where
     /// Array consisting of local alive masks for each registered replica. Required
     /// because replicas make independent progress over the log, so we need to
     /// track log wrap-arounds for each of them separately.
-    lmasks: [CachePadded<Cell<bool>>; MAX_REPLICAS],
-
-    pub objpool: *mut pmdk::ObjPool,
+    lmasks: [CachePadded<Cell<bool>>; MAX_REPLICAS],   
 }
 
 impl<'a, T> fmt::Debug for Log<'a, T>
@@ -177,8 +177,8 @@ where
     /// ```
     ///
     /// This method also allocates memory for the log upfront. No further allocations
-    /// will be performed once this method returns.
-    pub fn new<'b>(bytes: usize, pool: &mut pmdk::ObjPool) -> Log<'b, T> {
+    /// will be performed once this method returns.    
+    pub fn new<'b>(bytes: usize) -> Log<'b, T> {
         use arr_macro::arr;
 
         // Calculate the number of entries that will go into the log, and retrieve a
@@ -205,7 +205,7 @@ where
                     .expect("Alignment error while allocating the shared log!"),
             )*/
 
-            pool.allocate(bytes, 0 as u64, None)
+            PMPOOL.allocate(bytes, 0 as u64, None)
             .unwrap()
             .as_mut_ptr()
         };
@@ -243,8 +243,7 @@ where
             ctail: CachePadded::new(AtomicUsize::new(0usize)),
             ltails: arr![Default::default(); 192],
             next: CachePadded::new(AtomicUsize::new(1usize)),
-            lmasks: fls,
-            objpool: pool,
+            lmasks: fls,            
         }
     }
 
@@ -692,10 +691,7 @@ where
 {
     /// Default constructor for the shared log.
     fn default() -> Self {
-        let path = String::from("/mnt/pmem0/test.pool");
-        let mut pool = pmdk::ObjPool::new::<_, String>(path, None, 0x1000, 0x1000_0000/0x1000).unwrap();
-        pool.set_rm_on_drop(true);
-        Log::new(DEFAULT_LOG_BYTES, &mut pool)
+        Log::new(DEFAULT_LOG_BYTES)
     }
 }
 
@@ -706,12 +702,6 @@ where
     /// Destructor for the shared log.
     fn drop(&mut self) {
         unsafe {
-            /*dealloc(
-                self.rawp,
-                Layout::from_size_align(self.rawb, align_of::<Cell<Entry<T>>>())
-                    .expect("Alignment error while deallocating the shared log!"),
-            )*/
-
             println!("Drop for Log");
         };
     }
@@ -741,6 +731,7 @@ mod tests {
         }
     }
 
+  
     // Test that we can default construct entries correctly.
     #[test]
     fn test_entry_create_default() {
@@ -759,11 +750,11 @@ mod tests {
     // Tests if a small log can be correctly constructed.
     #[test]
     fn test_log_create() {
-        let path = String::from("/mnt/pmem0/test.pool");
-        let mut pool = pmdk::ObjPool::new::<_, String>(path, None, 0x1000, 0x1000_0000 / 0x1000).unwrap();
-        pool.set_rm_on_drop(true);
-
-        let l = Log::<Operation>::new(1024 * 1024, &mut pool);
+        //let path = String::from("/mnt/pmem0/test.pool");
+        //let mut pool = pmdk::ObjPool::new::<_, String>(path, None, 0x1000, 0x1000_0000 / 0x1000).unwrap();
+        //pool.set_rm_on_drop(true);
+        
+        let l = Log::<Operation>::new(1024 * 1024);
         let n = (1024 * 1024) / Log::<Operation>::entry_size();
         assert_eq!(l.rawb, 1024 * 1024);
         assert_eq!(l.size, n);

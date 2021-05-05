@@ -9,6 +9,9 @@ use std::cell::RefCell;
 
 use node_replication::Dispatch;
 use node_replication::Replica;
+use node_replication::PVec;
+use node_replication::PMPOOL;
+
 use rand::{thread_rng, Rng};
 
 mod mkbench;
@@ -34,7 +37,7 @@ pub enum OpRd {}
 /// We just use a vector.
 #[derive(Debug, Clone)]
 pub struct Stack {
-    storage: Vec<u32>,
+    storage: PVec<u32>,
 }
 
 impl Stack {

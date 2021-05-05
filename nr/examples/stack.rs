@@ -10,6 +10,8 @@ use node_replication::Replica;
 use node_replication::PVec;
 extern crate pmdk;
 
+use node_replication::PMPOOL;
+
 /// We support mutable push and pop operations on the stack.
 #[derive(Clone, Debug, PartialEq)]
 enum Modify {
@@ -60,7 +62,10 @@ impl Dispatch for Stack {
     /// The `dispatch` function applies the immutable operations.
     fn dispatch(&self, op: Self::ReadOperation) -> Self::Response {
         match op {
-            Access::Peek => self.storage.last().cloned(),
+           //Access::Peek => self.storage.last().copied().cloned(),
+           Access::Peek => 
+                    //self.storage.last(),
+                    return None,
         }
     }
 
@@ -79,14 +84,9 @@ impl Dispatch for Stack {
 /// We initialize a log, and two replicas for a stack, register with the replica
 /// and then execute operations.
 fn main() {
-    
-    let path = String::from("/mnt/pmem0/test.pool");
-    let mut pool = pmdk::ObjPool::new::<_, String>(path, None, 0x1000, 0x1000_0000 / 0x1000).unwrap();
-    pool.set_rm_on_drop(true);
-
     // The operation log for storing `WriteOperation`, it has a size of 2 MiB:
     let log = Arc::new(Log::<<Stack as Dispatch>::WriteOperation>::new(
-        2 * 1024 * 1024, &mut pool
+        2 * 1024 * 1024
     ));
 
     // Next, we create two replicas of the stack
@@ -97,10 +97,11 @@ fn main() {
     // `execute_mut` and `execute`. Eventually they end up in the `Dispatch` trait.
     let thread_loop = |replica: &Arc<Replica<Stack>>, ridx| {
         for i in 0..2048 {
-            let _r = match i % 3 {
+            //let _r = match i % 3 {
+                let _r = match i % 2 {
                 0 => replica.execute_mut(Modify::Push(i as u32), ridx),
                 1 => replica.execute_mut(Modify::Pop, ridx),
-                2 => replica.execute(Access::Peek, ridx),
+                //2 => replica.execute(Access::Peek, ridx),
                 _ => unreachable!(),
             };
         }

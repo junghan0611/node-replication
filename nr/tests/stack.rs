@@ -17,6 +17,8 @@ use node_replication::Replica;
 use node_replication::PVec;
 extern crate pmdk;
 
+use node_replication::PMPOOL;
+
 use rand::{thread_rng, Rng};
 
 #[derive(Eq, PartialEq, Clone, Copy, Debug)]
@@ -98,19 +100,16 @@ impl Dispatch for Stack {
     }
 }
 
+
+
 /// Sequential data structure test (one thread).
 ///
 /// Execute operations at random, comparing the result
 /// against a known correct implementation.
 #[test]
 fn sequential_test() {
-
-    let path = String::from("/mnt/pmem0/test.pool");
-    let mut pool = pmdk::ObjPool::new::<_, String>(path, None, 0x1000, 0x1000_0000 / 0x1000).unwrap();
-    pool.set_rm_on_drop(true);
-
     let log = Arc::new(Log::<<Stack as Dispatch>::WriteOperation>::new(
-        4 * 1024 * 1024, &mut pool
+        4 * 1024 * 1024, 
     ));
 
     let mut orng = thread_rng();
@@ -118,8 +117,6 @@ fn sequential_test() {
 
     let r = Replica::<Stack>::new(&log);
     let idx = r.register().expect("Failed to register with Replica.");
-
-    // let stack = r.get_ds();  
 
     let mut correct_stack: Vec<u32> = Vec::new();
     let mut correct_popped: Vec<Option<u32>> = Vec::new();

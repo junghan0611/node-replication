@@ -5,6 +5,7 @@ use core::cell::RefCell;
 use core::hint::spin_loop;
 use core::mem::MaybeUninit;
 use core::sync::atomic::{AtomicUsize, Ordering};
+use std::ffi::CString;
 
 use alloc::sync::Arc;
 use alloc::vec::Vec;
@@ -16,6 +17,8 @@ use super::context::Context;
 use super::log::Log;
 use super::rwlock::RwLock;
 use super::Dispatch;
+
+use crate::PMPOOL;
 
 /// A token handed out to threads registered with replicas.
 ///
@@ -216,8 +219,7 @@ where
                         ),
                     ),
                 slog: log.clone(),
-                //data: CachePadded::new(RwLock::<D>::default()),
-                data: CachePadded::new(RwLock::<D>::new(log.objpool.as_mut().unwrap())),
+                data: CachePadded::new(RwLock::<D>::default()),                
             });
 
             let mut replica = uninit_replica.assume_init();
@@ -628,11 +630,7 @@ mod test {
     // Tests whether we can construct a Replica given a log.
     #[test]
     fn test_replica_create() {
-        let path = String::from("/mnt/pmem0/test.pool");
-        let mut pool = pmdk::ObjPool::new::<_, String>(path, None, 0x1000, 0x1000_0000 / 0x1000).unwrap();
-        pool.set_rm_on_drop(true);
-        
-        let slog = Arc::new(Log::<<Data as Dispatch>::WriteOperation>::new(1024, &mut pool));
+        let slog = Arc::new(Log::<<Data as Dispatch>::WriteOperation>::new(1024));
         let repl = Replica::<Data>::new(&slog);
         assert_eq!(repl.idx, 1);
         assert_eq!(repl.combiner.load(Ordering::SeqCst), 0);

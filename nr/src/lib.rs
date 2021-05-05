@@ -78,6 +78,7 @@ extern crate core;
 extern crate crossbeam_utils;
 
 extern crate pmdk;
+extern crate pmdk_sys;
 
 #[macro_use]
 extern crate log as logging;
@@ -88,15 +89,27 @@ extern crate static_assertions;
 mod context;
 mod log;
 mod replica;
+pub mod pvec;
+
 pub mod rwlock;
 
-pub mod pvec;
-pub use pvec::PVec;
-
+pub use crate::pvec::PVec;
 pub use crate::log::Log;
 pub use replica::{Replica, ReplicaToken, MAX_THREADS_PER_REPLICA};
 
+
 use core::fmt::Debug;
+
+#[macro_use]
+extern crate lazy_static;
+lazy_static! {
+    pub static ref PMPOOL: pmdk::ObjPool = {
+        let path = String::from("/mnt/pmem0/test.pool");
+        let mut pool = pmdk::ObjPool::new::<_, String>(path, None, 0x1000, 0x1000_0000 / 0x1000).unwrap();
+        pool.set_rm_on_drop(true);
+        pool
+    };    
+}
 
 /// Trait that a data structure must implement to be usable with this library.
 ///

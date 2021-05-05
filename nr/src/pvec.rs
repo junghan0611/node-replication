@@ -2,17 +2,19 @@ use std::ptr;
 use std::ptr::NonNull;
 use std::{alloc, borrow::BorrowMut, u8};
 use core::default::Default;
+use std::fmt;
 
-use pmdk::ObjPool;
+use crate::PMPOOL;
 
 extern crate pmdk;
 
-pub struct PVec<T> {
+#[derive(Debug, Clone)]
+pub struct PVec<T> 
+{    
     //ptr: NonNull<T>,
     ptr: *mut T,
     len: usize,
-    capacity: usize,
-    pool: *mut pmdk::ObjPool,
+    capacity: usize,    
 }
 
 unsafe impl Send for PVec<u32> {}
@@ -25,11 +27,10 @@ impl<T> Default for PVec<T> {
             ptr: 0 as *mut T,
             len: 0,
             capacity: 0,
-            pool: 0 as *mut pmdk::ObjPool,
         }            
     }
 }
-
+ 
 impl<T> PVec<T> {
     //pub fn new(new_pool: &mut pmdk::ObjPool) -> Self {
     pub fn new() -> Self {
@@ -39,13 +40,7 @@ impl<T> PVec<T> {
             ptr: 0 as *mut T,
             len: 0,
             capacity: 0,
-            //pool: new_pool,
-            pool: 0 as *mut pmdk::ObjPool,
         }
-    }
-
-    pub fn set_pool(&mut self, _pool: &mut pmdk::ObjPool){
-        self.pool = _pool;
     }
 
     pub fn push(&mut self, item: T) {
@@ -56,7 +51,7 @@ impl<T> PVec<T> {
             // SAFETY: the layout is hardcoded to be 4 * size_of<T>
             // size_of<T>j is > 0
             let ptr = unsafe {
-                (*self.pool)
+                PMPOOL
                     .allocate(4, 0 as u64, None)
                     .unwrap()
                     .as_mut_ptr()
@@ -71,7 +66,7 @@ impl<T> PVec<T> {
             // The memory previously at ptr is not read!
             unsafe {
                 ptr.write(item);
-                (*self.pool).persist(ptr as *const core::ffi::c_void, self.len);
+                PMPOOL.persist(ptr as *const core::ffi::c_void, self.len);
             };
 
             self.ptr = ptr;
@@ -87,7 +82,7 @@ impl<T> PVec<T> {
             // And writing to an offset at self.len is valid
             unsafe {
                 self.ptr.add(self.len).write(item);
-                (*self.pool).persist(self.ptr.add(self.len) as *const core::ffi::c_void, self.len);
+                PMPOOL.persist(self.ptr.add(self.len) as *const core::ffi::c_void, self.len);
             }
             self.len += 1;
         } else {
@@ -96,17 +91,17 @@ impl<T> PVec<T> {
             let align = std::mem::align_of::<T>();
             size.checked_add(size % align).expect("Can't allocate");
 
-            println! {"Old Size {}", size};
-            println!("Before Resize {:?}", self.ptr);
+            //println! {"Old Size {}", size};
+            //println!("Before Resize {:?}", self.ptr);
 
             let ptr = unsafe {
                 debug_assert!(self.len == self.capacity);
                 //let layout = alloc::Layout::from_size_align_unchecked(size, align);
                 let new_size = std::mem::size_of::<T>() * new_capacity;
-                println! {"New Size {}", new_size};
+                //println! {"New Size {}", new_size};
 
                 // reallocation
-                (*self.pool)
+                PMPOOL
                     .reallocate(self.ptr as *const core::ffi::c_void, new_size, 0 as u64)
                     .unwrap()
                     .as_mut_ptr()
@@ -121,7 +116,7 @@ impl<T> PVec<T> {
             self.ptr = unsafe {
                 ptr.add(self.len).write(item);
                 //println!{"Persist {:?}", ptr.add(self.len)}
-                (*self.pool).persist(ptr.add(self.len) as *const core::ffi::c_void, self.len);
+                PMPOOL.persist(ptr.add(self.len) as *const core::ffi::c_void, self.len);
                 ptr
             };
 
@@ -139,6 +134,10 @@ impl<T> PVec<T> {
         Some(unsafe { &*self.ptr.as_ptr().add(index) })
     }*/
 
+    pub fn last(&mut self) -> Option<&T> {
+        Some(unsafe { &*self.ptr.offset(self.len as isize)})
+    }
+    
     pub fn pop(&mut self) -> Option<T> {
         if self.len == 0 {
             None
@@ -146,7 +145,7 @@ impl<T> PVec<T> {
             self.len -= 1;
             unsafe {
                 let ret = ptr::read(self.ptr.offset(self.len as isize));
-                (*self.pool).persist(
+                PMPOOL.persist(
                     self.ptr.offset(self.len as isize) as *const core::ffi::c_void,
                     self.len,
                 );
@@ -167,12 +166,6 @@ impl<T> PVec<T> {
 impl<T> Drop for PVec<T> {
     fn drop(&mut self) {
         unsafe {
-            /*std::ptr::drop_in_place(std::slice::from_raw_parts_mut(self.ptr.as_ptr(), self.len));
-            let layout = alloc::Layout::from_size_align_unchecked(
-                std::mem::size_of::<T>() * self.capacity,
-                std::mem::align_of::<T>(),
-            );
-            alloc::dealloc(self.ptr as *mut u8, layout)*/
             println! {"Drop for Stack"};
         }
     }

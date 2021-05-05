@@ -15,7 +15,9 @@ crossbeam-utils = { version = "0.6", default-features = false }
 arr_macro = "0.1.2"
 log = "0.4"
 static_assertions = "1.1.0"
+pmdk-sys = { path = "../../lib/pmdk-rs/pmdk-sys"}
 pmdk = { path = "../../lib/pmdk-rs" }
+lazy_static = "1.4.0"
 
 # Add debug symbols on the release build so that we can debug performance issues
 [profile.release]
