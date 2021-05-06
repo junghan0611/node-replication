@@ -18,7 +18,7 @@ use super::log::Log;
 use super::rwlock::RwLock;
 use super::Dispatch;
 
-use crate::PMPOOL;
+//use crate::PMPOOL;
 
 /// A token handed out to threads registered with replicas.
 ///

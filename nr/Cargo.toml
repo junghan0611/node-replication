@@ -18,6 +18,7 @@ static_assertions = "1.1.0"
 pmdk-sys = { path = "../../lib/pmdk-rs/pmdk-sys"}
 pmdk = { path = "../../lib/pmdk-rs" }
 lazy_static = "1.4.0"
+core_affinity = "0.5.10"
 
 # Add debug symbols on the release build so that we can debug performance issues
 [profile.release]

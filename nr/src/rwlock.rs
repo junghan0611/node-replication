@@ -68,7 +68,7 @@ where
     fn default() -> RwLock<T> {
         use arr_macro::arr;
 
-        println!{"default: RwLock1"};
+        //println!{"default: RwLock1"};
 
         let ret = RwLock {
             wlock: CachePadded::new(AtomicBool::new(false)),
@@ -76,7 +76,7 @@ where
             data: UnsafeCell::new(T::default()),
         };
 
-        println!{"default: RwLock2"};
+        //println!{"default: RwLock2"};
 
         ret
     }

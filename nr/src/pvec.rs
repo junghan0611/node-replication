@@ -4,10 +4,13 @@ use std::{alloc, borrow::BorrowMut, u8};
 use core::default::Default;
 use std::fmt;
 
+extern crate core_affinity;
+use std::thread;
+
 use crate::PMPOOL;
+use crate::PMPOOL1;
 
 extern crate pmdk;
-
 #[derive(Debug, Clone)]
 pub struct PVec<T> 
 {    
@@ -22,7 +25,9 @@ unsafe impl Sync for PVec<u32> {}
 
 impl<T> Default for PVec<T> {
     fn default() -> PVec<T> {
-        println!("default PVec");
+        //println!("default PVec");
+        let core_ids = core_affinity::get_core_ids().unwrap()[0];
+        println!("Vector Create: {}", core_ids.id);
         PVec {            
             ptr: 0 as *mut T,
             len: 0,
@@ -35,6 +40,7 @@ impl<T> PVec<T> {
     //pub fn new(new_pool: &mut pmdk::ObjPool) -> Self {
     pub fn new() -> Self {
         println!("NEW PVEC");
+        panic!();
         Self {
             //ptr: NonNull::dangling(),
             ptr: 0 as *mut T,
@@ -46,15 +52,26 @@ impl<T> PVec<T> {
     pub fn push(&mut self, item: T) {
         assert_ne!(std::mem::size_of::<T>(), 0, "No zero sized types");
 
+        let core_ids = core_affinity::get_core_ids().unwrap()[0].id;
+        //println!("Vector Create: {}", core_ids.id);    
+
         if self.capacity == 0 {
             //let layout = alloc::Layout::array::<T>(4).expect("Could not allocation");
             // SAFETY: the layout is hardcoded to be 4 * size_of<T>
             // size_of<T>j is > 0
             let ptr = unsafe {
-                PMPOOL
-                    .allocate(4, 0 as u64, None)
+                if core_ids < 20 {
+                    PMPOOL
+                    .allocate(4, 0 as u64, None)                    
                     .unwrap()
                     .as_mut_ptr()
+                } else {
+                    //PMPOOL1
+                    PMPOOL1
+                    .allocate(4, 0 as u64, None)                    
+                    .unwrap()
+                    .as_mut_ptr()
+                }                
             } as *mut T;
             //let ptr = NonNull::new(ptr).expect("Could not allocate memory");
             if ptr.is_null() {
@@ -66,7 +83,11 @@ impl<T> PVec<T> {
             // The memory previously at ptr is not read!
             unsafe {
                 ptr.write(item);
-                PMPOOL.persist(ptr as *const core::ffi::c_void, self.len);
+                /*if core_ids < 20 {
+                    PMPOOL.persist(ptr as *const core::ffi::c_void, std::mem::size_of::<T>());
+                } else {
+                    PMPOOL1.persist(ptr as *const core::ffi::c_void, std::mem::size_of::<T>());
+                }*/
             };
 
             self.ptr = ptr;
@@ -82,7 +103,11 @@ impl<T> PVec<T> {
             // And writing to an offset at self.len is valid
             unsafe {
                 self.ptr.add(self.len).write(item);
-                PMPOOL.persist(self.ptr.add(self.len) as *const core::ffi::c_void, self.len);
+                /*if core_ids < 20 {
+                    PMPOOL.persist(self.ptr.add(self.len) as *const core::ffi::c_void, std::mem::size_of::<T>());
+                } else {
+                    PMPOOL1.persist(self.ptr.add(self.len) as *const core::ffi::c_void, std::mem::size_of::<T>());
+                }*/              
             }
             self.len += 1;
         } else {
@@ -99,12 +124,20 @@ impl<T> PVec<T> {
                 //let layout = alloc::Layout::from_size_align_unchecked(size, align);
                 let new_size = std::mem::size_of::<T>() * new_capacity;
                 //println! {"New Size {}", new_size};
-
-                // reallocation
-                PMPOOL
-                    .reallocate(self.ptr as *const core::ffi::c_void, new_size, 0 as u64)
-                    .unwrap()
-                    .as_mut_ptr()
+                
+                if core_ids < 20 {
+                    // reallocation
+                    PMPOOL
+                        .reallocate(self.ptr as *const core::ffi::c_void, new_size, 0 as u64)
+                        .unwrap()
+                        .as_mut_ptr()
+                } else {
+                    //PMPOOL1
+                    PMPOOL1
+                        .reallocate(self.ptr as *const core::ffi::c_void, new_size, 0 as u64)
+                        .unwrap()
+                        .as_mut_ptr()
+                }
             } as *mut T;
 
             if ptr.is_null() {
@@ -116,7 +149,11 @@ impl<T> PVec<T> {
             self.ptr = unsafe {
                 ptr.add(self.len).write(item);
                 //println!{"Persist {:?}", ptr.add(self.len)}
-                PMPOOL.persist(ptr.add(self.len) as *const core::ffi::c_void, self.len);
+                /*if core_ids < 20 {
+                    PMPOOL.persist(ptr.add(self.len) as *const core::ffi::c_void, std::mem::size_of::<T>());
+                } else {
+                    PMPOOL1.persist(ptr.add(self.len) as *const core::ffi::c_void, std::mem::size_of::<T>());
+                }*/
                 ptr
             };
 
@@ -139,16 +176,28 @@ impl<T> PVec<T> {
     }
     
     pub fn pop(&mut self) -> Option<T> {
+
+        let core_ids = core_affinity::get_core_ids().unwrap()[0].id;
+        //println!("Vector Create: {}", core_ids.id);    
+
         if self.len == 0 {
             None
         } else {
             self.len -= 1;
             unsafe {
                 let ret = ptr::read(self.ptr.offset(self.len as isize));
-                PMPOOL.persist(
-                    self.ptr.offset(self.len as isize) as *const core::ffi::c_void,
-                    self.len,
-                );
+                
+                /*if core_ids < 20 {
+                    PMPOOL.persist(
+                        self.ptr.offset(self.len as isize) as *const core::ffi::c_void,
+                        std::mem::size_of::<T>(),
+                    );
+                } else {
+                    PMPOOL1.persist(
+                        self.ptr.offset(self.len as isize) as *const core::ffi::c_void,
+                        std::mem::size_of::<T>(),
+                    );
+                }*/
                 Some(ret)
             }
         }
@@ -166,7 +215,7 @@ impl<T> PVec<T> {
 impl<T> Drop for PVec<T> {
     fn drop(&mut self) {
         unsafe {
-            println! {"Drop for Stack"};
+            //println! {"Drop for Stack"};
         }
     }
 }

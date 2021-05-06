@@ -702,7 +702,7 @@ where
     /// Destructor for the shared log.
     fn drop(&mut self) {
         unsafe {
-            println!("Drop for Log");
+            //println!("Drop for Log");
         };
     }
 }
