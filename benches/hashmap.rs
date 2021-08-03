@@ -16,6 +16,10 @@ use zipf::ZipfDistribution;
 use node_replication::Dispatch;
 use node_replication::Replica;
 
+use node_replication::PVec;
+use node_replication::PHashMap;
+use node_replication::PMPOOL;
+
 mod hashmap_comparisons;
 mod mkbench;
 mod utils;
@@ -75,7 +79,8 @@ pub enum OpConcurrent {
 /// We just use a vector.
 #[derive(Debug, Clone)]
 pub struct NrHashMap {
-    storage: HashMap<u64, u64>,
+    //storage: HashMap<u64, u64>,
+    storage: PHashMap<u64, u64>,
 }
 
 impl NrHashMap {
@@ -91,10 +96,14 @@ impl NrHashMap {
 impl Default for NrHashMap {
     /// Return a dummy hash-map with `INITIAL_CAPACITY` elements.
     fn default() -> NrHashMap {
-        let mut storage = HashMap::with_capacity(INITIAL_CAPACITY);
+        println!{"Default:NrHashMap 1: INITIAL_CAPACITY {}", INITIAL_CAPACITY};
+        let mut storage = PHashMap::with_capacity(INITIAL_CAPACITY);
+        println!{"Default:NrHashMap 2"};
         for i in 0..INITIAL_CAPACITY {
+            //println!{"Default:NrHashMap Insert {}", i};
             storage.insert(i as u64, (i + 1) as u64);
         }
+        println!{"Default:NrHashMap 3"};
         NrHashMap { storage }
     }
 }
@@ -220,6 +229,8 @@ fn hashmap_single_threaded(c: &mut TestHarness) {
 
     let ops = generate_operations(NOP, WRITE_RATIO, KEY_SPACE, UNIFORM);
     mkbench::baseline_comparison::<Replica<NrHashMap>>(c, "hashmap", ops, LOG_SIZE_BYTES);
+
+    println!("hashmap_single_threaded");
 }
 
 /// Compare scale-out behaviour of synthetic data-structure.

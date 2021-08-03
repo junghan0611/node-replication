@@ -9,3 +9,6 @@ use std::thread;
 
 ### Persist 
 
+RUST_TEST_THREADS=1 cargo bench --bench stack --features nr
+
+RUST_TEST_THREADS=1 cargo bench --bench hashmap --features nr

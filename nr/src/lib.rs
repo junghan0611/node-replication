@@ -90,10 +90,12 @@ mod context;
 mod log;
 mod replica;
 pub mod pvec;
+pub mod phashmap;
 
 pub mod rwlock;
 
 pub use crate::pvec::PVec;
+pub use crate::phashmap::PHashMap;
 pub use crate::log::Log;
 pub use replica::{Replica, ReplicaToken, MAX_THREADS_PER_REPLICA};
 
@@ -106,14 +108,14 @@ lazy_static! {
     pub static ref PMPOOL: pmdk::ObjPool = {
         let path = String::from("/mnt/pmem0/test.pool");
         //let path = String::from("/dev/shm/pmem0/test.pool");
-        let mut pool = pmdk::ObjPool::new::<_, String>(path, None, 0x1000, 0x1000_0000 / 0x1000).unwrap();
+        let mut pool = pmdk::ObjPool::new::<_, String>(path, None, 0x1000, 0x20000_0000 / 0x1000).unwrap();
         pool.set_rm_on_drop(true);
         pool
     };    
     pub static ref PMPOOL1: pmdk::ObjPool = {
         let path = String::from("/mnt/pmem1/test.pool");
         //let path = String::from("/dev/shm/pmem0/test.pool");
-        let mut pool = pmdk::ObjPool::new::<_, String>(path, None, 0x1000, 0x1000_0000 / 0x1000).unwrap();
+        let mut pool = pmdk::ObjPool::new::<_, String>(path, None, 0x1000, 0x20000_0000 / 0x1000).unwrap();
         pool.set_rm_on_drop(true);
         pool
     };
