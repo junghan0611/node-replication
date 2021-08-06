@@ -18,7 +18,6 @@ use node_replication::Replica;
 
 use node_replication::PVec;
 use node_replication::PHashMap;
-use node_replication::PMPOOL;
 
 mod hashmap_comparisons;
 mod mkbench;
@@ -97,13 +96,12 @@ impl Default for NrHashMap {
     /// Return a dummy hash-map with `INITIAL_CAPACITY` elements.
     fn default() -> NrHashMap {
         println!{"Default:NrHashMap 1: INITIAL_CAPACITY {}", INITIAL_CAPACITY};
-        let mut storage = PHashMap::with_capacity(INITIAL_CAPACITY);
-        println!{"Default:NrHashMap 2"};
+        //let mut storage = PHashMap::with_capacity(INITIAL_CAPACITY);
+        let mut storage = PHashMap::new();
         for i in 0..INITIAL_CAPACITY {
             //println!{"Default:NrHashMap Insert {}", i};
             storage.insert(i as u64, (i + 1) as u64);
         }
-        println!{"Default:NrHashMap 3"};
         NrHashMap { storage }
     }
 }

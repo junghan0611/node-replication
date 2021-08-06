@@ -1,40 +1,58 @@
-use core::panic;
+use core::default::Default;
 use std::borrow::Borrow;
 use std::collections::hash_map::DefaultHasher;
 use std::hash::{Hash, Hasher};
 use std::mem;
 
-const INITIAL_NBUCKETS: usize = 1;
+pub use crate::pvec::PVec;
 
-use super::pvec::PVec;
-
-unsafe impl Send for PHashMap<u64, u64> {}
-unsafe impl Sync for PHashMap<u64, u64> {}
+/* #[macro_use]
+extern crate lazy_static;
+lazy_static! {
+    pub static ref PMPOOL1: pmdk::ObjPool = {
+        let path = String::from("/mnt/pmem0/basic-hash-map-pool-1.pool");
+        //let path = String::from("/dev/shm/pmem0/test.pool");
+        let mut pool = pmdk::ObjPool::new::<_, String>(path, None, 0x1000, 0x2000_0000 / 0x1000).unwrap();
+        pool.set_rm_on_drop(true);
+        pool
+    };   
+}
+ */
+//const INITIAL_NBUCKETS: usize = 1;
+const INITIAL_NBUCKETS: usize = 1024;
 
 #[derive(Debug, Clone)]
 pub struct PHashMap<K, V> {
-    buckets: PVec<PVec<(K, V)>>,    
+    buckets: PVec<PVec<(K, V)>>,
     items: usize,
+}
+
+impl<K, V> Default for PHashMap<K, V> {
+    fn default() -> PHashMap<K, V> {        
+        PHashMap {
+            buckets: PVec::new(),
+            items: 0,
+        }
+    }
 }
 
 impl<K, V> PHashMap<K, V> {
     pub fn new() -> Self {
         PHashMap {
-            //buckets: Vec::new(),
-            buckets: PVec::default(),
+            buckets: PVec::new(),
             items: 0,
         }
     }
 
     pub fn with_capacity(capacity : usize) -> Self {
-        println!{"PHashMap::with_capacity capacity : {}", capacity};
+        //println!{"PHashMap::with_capacity capacity : {}", capacity};
         
         let hashmap = PHashMap {
             buckets: PVec::with_capacity(capacity),
             items: 0,
         };
 
-        println!{"PHashMap::with_capacity, buckets.capacity {}, buckets.len {}", hashmap.buckets.capacity(), hashmap.buckets.len() };
+        //println!{"PHashMap::with_capacity, buckets.capacity {}, buckets.len {}", hashmap.buckets.capacity(), hashmap.buckets.len() };
 
         hashmap
     }
@@ -51,12 +69,15 @@ where
     {
         let mut hasher = DefaultHasher::new();
         key.hash(&mut hasher);
-        let hashindex = (hasher.finish() % self.buckets.len() as u64) as usize;              
-        println!("::bucket, self.buckets.len() {}, hash index {}", self.buckets.len(), hashindex);
+        let hashindex = (hasher.finish() % self.buckets.len() as u64) as usize;
+        //println!("::bucket, self.buckets.len() {}, hash index {}", self.buckets.len(), hashindex);
         hashindex
     }
 
     pub fn insert(&mut self, key: K, value: V) -> Option<V> {
+
+        //println!("item {}, buckets.len {}", self.items, self.buckets.len());
+
         if self.buckets.is_empty() || self.items > 3 * self.buckets.len() / 4 {
             self.resize();
         }
@@ -95,7 +116,7 @@ where
         self.get(key).is_some()
     }
 
-/*     pub fn remove<Q>(&mut self, key: &Q) -> Option<V>
+    pub fn remove<Q>(&mut self, key: &Q) -> Option<V>
     where
         K: Borrow<Q>,
         Q: Hash + Eq + ?Sized,
@@ -107,7 +128,7 @@ where
             .position(|&(ref ekey, _)| ekey.borrow() == key)?;
         self.items -= 1;
         Some(bucket.swap_remove(i).1)
-    } */
+    }
 
     pub fn len(&self) -> usize {
         self.items
@@ -117,22 +138,23 @@ where
         self.items == 0
     }
 
-    fn resize(&mut self) {        
-        println!("[PHASHMAP] self.buckets.len(): {}", self.buckets.len());
-
+    fn resize(&mut self) {
         let target_size = match self.buckets.len() {
             0 => INITIAL_NBUCKETS,
             n => 2 * n,
         };
 
-        let mut new_buckets = PVec::with_capacity(target_size);
-        //new_buckets.extend((0..target_size).map(|_| PVec::new()));
+        //println!("::resize taget_size {}", target_size);
 
-        for i in (0..target_size) {
-            new_buckets.map(|_| PVec::new());
+        let mut new_buckets: PVec<PVec<(K,V)>> = PVec::with_capacity(target_size);
+        //new_buckets.extend((0..target_size).map(|_| PVec::new()));
+        for i in 0..target_size {
+            new_buckets.insert(i,PVec::new()); 
+            //new_buckets.push(PVec::new()); 
         }
 
-        for (key, value) in self.buckets.iter_mut().flat_map(|bucket| bucket.drain(..)) {
+        //for (key, value) in self.buckets.iter_mut().flat_map(|bucket| bucket.drain(..)) {
+        for (key, value) in self.buckets.iter_mut().flat_map(|bucket| bucket.drain()) {
             let mut hasher = DefaultHasher::new();
             key.hash(&mut hasher);
             let bucket = (hasher.finish() % new_buckets.len() as u64) as usize;
@@ -192,14 +214,15 @@ mod tests {
 
     #[test]
     fn insert() {
-        let mut map = PHashMap::new();
+        //let mut map = PHashMap::new();
+        let mut map = PHashMap::with_capacity(2);
         assert_eq!(map.len(), 0);
         assert!(map.is_empty());
         map.insert("foo", 42);
         assert_eq!(map.len(), 1);
         assert!(!map.is_empty());
         assert_eq!(map.get(&"foo"), Some(&42));
-        //assert_eq!(map.remove(&"foo"), Some(42));
+        assert_eq!(map.remove(&"foo"), Some(42));
         assert_eq!(map.len(), 0);
         assert!(map.is_empty());
         assert_eq!(map.get(&"foo"), None);
@@ -207,7 +230,8 @@ mod tests {
 
     #[test]
     fn iter() {
-        let mut map = PHashMap::new();
+        //let mut map = PHashMap::new();
+        let mut map = PHashMap::with_capacity(2);
         map.insert("foo", 42);
         map.insert("bar", 43);
         map.insert("baz", 142);
@@ -221,6 +245,10 @@ mod tests {
                 _ => unreachable!(),
             }
         }
+        
+        println!("----");
+        assert_eq!(map.get(&"foo"), Some(&42));
+
         assert_eq!((&map).into_iter().count(), 4);
     }
 }

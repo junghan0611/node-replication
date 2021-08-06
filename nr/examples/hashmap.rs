@@ -8,11 +8,12 @@ use std::sync::Arc;
 use node_replication::Dispatch;
 use node_replication::Log;
 use node_replication::Replica;
+use node_replication::PHashMap;
 
 /// The node-replicated hashmap uses a std hashmap internally.
 #[derive(Default)]
 struct NrHashMap {
-    storage: HashMap<u64, u64>,
+    storage: PHashMap<u64, u64>,
 }
 
 /// We support mutable put operation on the hashmap.

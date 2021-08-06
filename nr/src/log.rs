@@ -16,7 +16,7 @@ use crossbeam_utils::CachePadded;
 use crate::context::MAX_PENDING_OPS;
 use crate::replica::MAX_THREADS_PER_REPLICA;
 
-use crate::PMPOOL;
+use crate::PMPOOL1;
 
 /// The default size of the shared log in bytes. If constructed using the
 /// default constructor, the log will be these many bytes in size. Currently
@@ -200,14 +200,15 @@ where
         // Now that we have the actual number of entries, allocate the log.
         let b = num * Log::<T>::entry_size();
         let mem = unsafe {
-            /*alloc(
+            
+            alloc(
                 Layout::from_size_align(b, align_of::<Cell<Entry<T>>>())
                     .expect("Alignment error while allocating the shared log!"),
-            )*/
+            )
 
-            PMPOOL.allocate(bytes, 0 as u64, None)
+            /*PMPOOL1.allocate(bytes, 0 as u64, None)
             .unwrap()
-            .as_mut_ptr()
+            .as_mut_ptr()*/
         };
         if mem.is_null() {
             panic!("Failed to allocate memory for the shared log!");

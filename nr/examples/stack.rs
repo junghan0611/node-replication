@@ -8,9 +8,6 @@ use node_replication::Dispatch;
 use node_replication::Log;
 use node_replication::Replica;
 use node_replication::PVec;
-extern crate pmdk;
-
-use node_replication::PMPOOL;
 
 /// We support mutable push and pop operations on the stack.
 #[derive(Clone, Debug, PartialEq)]
@@ -26,7 +23,7 @@ enum Access {
 }
 
 /// The actual stack, it uses a single-threaded Vec.
-struct Stack {    
+struct Stack {
     storage: PVec<u32>,
 }
 
@@ -62,10 +59,7 @@ impl Dispatch for Stack {
     /// The `dispatch` function applies the immutable operations.
     fn dispatch(&self, op: Self::ReadOperation) -> Self::Response {
         match op {
-           //Access::Peek => self.storage.last().copied().cloned(),
-           Access::Peek => 
-                    //self.storage.last(),
-                    return None,
+            Access::Peek => self.storage.last().cloned(),
         }
     }
 
@@ -86,7 +80,7 @@ impl Dispatch for Stack {
 fn main() {
     // The operation log for storing `WriteOperation`, it has a size of 2 MiB:
     let log = Arc::new(Log::<<Stack as Dispatch>::WriteOperation>::new(
-        2 * 1024 * 1024
+        2 * 1024 * 1024,
     ));
 
     // Next, we create two replicas of the stack
@@ -97,11 +91,10 @@ fn main() {
     // `execute_mut` and `execute`. Eventually they end up in the `Dispatch` trait.
     let thread_loop = |replica: &Arc<Replica<Stack>>, ridx| {
         for i in 0..2048 {
-            //let _r = match i % 3 {
-                let _r = match i % 2 {
+            let _r = match i % 3 {
                 0 => replica.execute_mut(Modify::Push(i as u32), ridx),
                 1 => replica.execute_mut(Modify::Pop, ridx),
-                //2 => replica.execute(Access::Peek, ridx),
+                2 => replica.execute(Access::Peek, ridx),
                 _ => unreachable!(),
             };
         }
