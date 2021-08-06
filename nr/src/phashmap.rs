@@ -30,13 +30,11 @@ impl<K, V> PHashMap<K, V> {
         println!{"PHashMap::with_capacity capacity : {}", capacity};
         
         let hashmap = PHashMap {
-            //buckets: PVec::new(),            
-            //buckets: PVec::with_capacity(capacity),
             buckets: PVec::with_capacity(capacity),
             items: 0,
         };
 
-        println!{"PHashMap::with_capacity, buckets.capacity {}", hashmap.buckets.capacity() };
+        println!{"PHashMap::with_capacity, buckets.capacity {}, buckets.len {}", hashmap.buckets.capacity(), hashmap.buckets.len() };
 
         hashmap
     }
@@ -53,19 +51,17 @@ where
     {
         let mut hasher = DefaultHasher::new();
         key.hash(&mut hasher);
-        //(hasher.finish() % self.buckets.len() as u64) as usize
-        (hasher.finish() % self.buckets.capacity() as u64) as usize
+        let hashindex = (hasher.finish() % self.buckets.len() as u64) as usize;              
+        println!("::bucket, self.buckets.len() {}, hash index {}", self.buckets.len(), hashindex);
+        hashindex
     }
 
     pub fn insert(&mut self, key: K, value: V) -> Option<V> {
-        /*if self.buckets.is_empty() || self.items > 3 * self.buckets.len() / 4 {
+        if self.buckets.is_empty() || self.items > 3 * self.buckets.len() / 4 {
             self.resize();
-        }*/
+        }
 
         let bucket = self.bucket(&key);
-
-        //println!("PHashMap::insert bucket.capacity {}, bucket index: {}", self.buckets.capacity(), bucket);
-
         let bucket = &mut self.buckets[bucket];
 
         self.items += 1;
@@ -121,8 +117,7 @@ where
         self.items == 0
     }
 
-    fn resize(&mut self) {
-        
+    fn resize(&mut self) {        
         println!("[PHASHMAP] self.buckets.len(): {}", self.buckets.len());
 
         let target_size = match self.buckets.len() {
@@ -130,10 +125,12 @@ where
             n => 2 * n,
         };
 
-        panic!();
+        let mut new_buckets = PVec::with_capacity(target_size);
+        //new_buckets.extend((0..target_size).map(|_| PVec::new()));
 
-    /*     let mut new_buckets = PVec::with_capacity(target_size);
-        new_buckets.extend((0..target_size).map(|_| PVec::new()));
+        for i in (0..target_size) {
+            new_buckets.map(|_| PVec::new());
+        }
 
         for (key, value) in self.buckets.iter_mut().flat_map(|bucket| bucket.drain(..)) {
             let mut hasher = DefaultHasher::new();
@@ -142,7 +139,7 @@ where
             new_buckets[bucket].push((key, value));
         }
 
-        mem::replace(&mut self.buckets, new_buckets); */
+        mem::replace(&mut self.buckets, new_buckets);
     }
 }
 

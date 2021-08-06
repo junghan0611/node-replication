@@ -64,13 +64,17 @@ impl<T> PVec<T> {
             // size_of<T>j is > 0
 
             //println!{"capacity {}", self.capacity};
+            //println!("size of item {}", std::mem::size_of::<T>()); // 16
+
+            let size = std::mem::size_of::<T>();
+            //let size = 24;
 
             let ptr = unsafe {
                 if core_ids < 20 {
-                    PMPOOL.allocate(std::mem::size_of::<T>() * 4, 0 as u64, None).unwrap().as_mut_ptr()
+                    PMPOOL.allocate(size, 0 as u64, None).unwrap().as_mut_ptr()
                 } else {
                     //PMPOOL1
-                    PMPOOL1.allocate(std::mem::size_of::<T>() * 4, 0 as u64, None).unwrap().as_mut_ptr()
+                    PMPOOL1.allocate(size, 0 as u64, None).unwrap().as_mut_ptr()
                 }
             } as *mut T;
             //let ptr = NonNull::new(ptr).expect("Could not allocate memory");
@@ -91,7 +95,7 @@ impl<T> PVec<T> {
             };
 
             self.ptr = ptr;
-            self.capacity = 4;
+            self.capacity = 1;
             self.len = 1;
         } else if self.len < self.capacity {
             let offset = self
@@ -178,6 +182,8 @@ impl<T> PVec<T> {
         let size = std::mem::size_of::<T>() * capacity;
         println!{"PVec::with_capacity, size {}", size};
 
+        //println!("!! size of item {}", std::mem::size_of::<T>()); // 왜 24 바이트지? 
+
         //let layout = alloc::Layout::array::<T>(4).expect("Could not allocation");
         // SAFETY: the layout is hardcoded to be 4 * size_of<T>
         // size_of<T>j is > 0
@@ -196,8 +202,7 @@ impl<T> PVec<T> {
         }
         vec.ptr = ptr;
         vec.capacity = capacity;
-        vec.len = 0; // for test
-        //vec.len = size / std::mem::align_of::<T>();        
+        vec.len = 0; 
         vec
     }
 
@@ -272,7 +277,7 @@ impl<T> DerefMut for PVec<T> {
     }
 }
 
-/*
+
 #[cfg(test)]
 mod tests {
     use super::*;
@@ -292,4 +297,4 @@ mod tests {
         assert_eq!(vec.len(), 5);*/
     }
 }
- */
+
