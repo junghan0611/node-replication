@@ -28,8 +28,8 @@ impl<T> RawVec<T> {
         // !0 is usize::MAX. This branch should be stripped at compile time.
         let cap = if mem::size_of::<T>() == 0 { !0 } else { 0 };
 
-        //println!("PVec::new()");
-        
+        println!("PVec::new()");
+
         // `NonNull::dangling()` doubles as "unallocated" and "zero-sized allocation"
         RawVec {
             ptr: NonNull::dangling(),
@@ -46,13 +46,11 @@ impl<T> RawVec<T> {
         };
         let size = new_cap * mem::size_of::<T>();
         
-        //println!("PVec::with_capacity {}", capacity);
+        println!("PVec::with_capacity {}", capacity);
 
         // Ensure that the new allocation doesn't exceed `isize::MAX` bytes.
         assert!(new_cap <= isize::MAX as usize, "Allocation too large");
 
-        let core_ids = 0;
-        #[cfg(feature = "dualpool")]
         let core_ids = core_affinity::get_core_ids().unwrap()[0].id;
 
         let new_ptr = NonNull::new(unsafe { 
@@ -81,8 +79,6 @@ impl<T> RawVec<T> {
         // Ensure that the new allocation doesn't exceed `isize::MAX` bytes.
         assert!(new_cap <= isize::MAX as usize, "Allocation too large");
 
-        let core_ids = 0;
-        #[cfg(feature = "dualpool")]
         let core_ids = core_affinity::get_core_ids().unwrap()[0].id;
 
         let new_ptr = if self.cap == 0 {
@@ -126,9 +122,6 @@ impl<T> RawVec<T> {
 impl<T> Drop for RawVec<T> {
     fn drop(&mut self) {
         let elem_size = mem::size_of::<T>();
-
-        let core_ids = 0;
-        #[cfg(feature = "dualpool")]
         let core_ids = core_affinity::get_core_ids().unwrap()[0].id;
 
         if self.cap != 0 && elem_size != 0 {

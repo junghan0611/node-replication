@@ -181,9 +181,6 @@ where
     pub fn new<'b>(bytes: usize) -> Log<'b, T> {
         use arr_macro::arr;
 
-        #[cfg(feature = "dualpool")]
-        println!{"DualPool"};
-
         // Calculate the number of entries that will go into the log, and retrieve a
         // slice to it from the allocated region of memory.
         let mut num = bytes / Log::<T>::entry_size();

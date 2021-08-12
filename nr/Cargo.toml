@@ -27,6 +27,3 @@ debug = true
 [dev-dependencies]
 chashmap = "2.2"
 rand = { version = "0.7", features = ["small_rng"] }
-
-[features]
-dualpool = []
