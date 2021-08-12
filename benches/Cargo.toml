@@ -105,6 +105,7 @@ node-replication = { path = "../nr" }
 cnr = { path = "../cnr" }
 
 [features]
+default = ["smokebench", "nr"]
 smokebench = []
 cmp = []
 nr = []

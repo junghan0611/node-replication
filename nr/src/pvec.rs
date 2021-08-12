@@ -8,6 +8,8 @@ use std::ptr::{self, NonNull};
 extern crate pmdk;
 extern crate pmdk_sys;
 
+extern crate core_affinity;
+
 use crate::PMPOOL1;
 use crate::PMPOOL2;
 
@@ -26,6 +28,8 @@ impl<T> RawVec<T> {
         // !0 is usize::MAX. This branch should be stripped at compile time.
         let cap = if mem::size_of::<T>() == 0 { !0 } else { 0 };
 
+        println!("PVec::new()");
+
         // `NonNull::dangling()` doubles as "unallocated" and "zero-sized allocation"
         RawVec {
             ptr: NonNull::dangling(),
@@ -42,11 +46,19 @@ impl<T> RawVec<T> {
         };
         let size = new_cap * mem::size_of::<T>();
         
+        println!("PVec::with_capacity {}", capacity);
+
         // Ensure that the new allocation doesn't exceed `isize::MAX` bytes.
         assert!(new_cap <= isize::MAX as usize, "Allocation too large");
 
+        let core_ids = core_affinity::get_core_ids().unwrap()[0].id;
+
         let new_ptr = NonNull::new(unsafe { 
-            PMPOOL1.allocate(size, 0 as u64, None).unwrap().as_mut_ptr()
+            if core_ids < 20 {
+                PMPOOL1.allocate(size, 0 as u64, None).unwrap().as_mut_ptr()
+            } else {
+                PMPOOL2.allocate(size, 0 as u64, None).unwrap().as_mut_ptr()
+            }
         } as *mut T).unwrap();
 
         RawVec {
@@ -67,18 +79,33 @@ impl<T> RawVec<T> {
         // Ensure that the new allocation doesn't exceed `isize::MAX` bytes.
         assert!(new_cap <= isize::MAX as usize, "Allocation too large");
 
+        let core_ids = core_affinity::get_core_ids().unwrap()[0].id;
+
         let new_ptr = if self.cap == 0 {
             //println!("grow:: cap==0 size {}", size);
-            unsafe { PMPOOL1.allocate(size, 0 as u64, None).unwrap().as_mut_ptr() }
+            unsafe { 
+                if core_ids < 20 {
+                    PMPOOL1.allocate(size, 0 as u64, None).unwrap().as_mut_ptr() 
+                } else {
+                    PMPOOL2.allocate(size, 0 as u64, None).unwrap().as_mut_ptr() 
+                }
+            }
         } else {
             let align = mem::align_of::<T>();
             size.checked_add(size % align).expect("Can't allocate");
             let old_ptr = self.ptr.as_ptr() as *mut u8;
             unsafe {
-                PMPOOL1
+                if core_ids < 20 {
+                    PMPOOL1
                     .reallocate(old_ptr as *const core::ffi::c_void, size, 0 as u64)
                     .unwrap()
                     .as_mut_ptr()
+                } else {
+                    PMPOOL2
+                    .reallocate(old_ptr as *const core::ffi::c_void, size, 0 as u64)
+                    .unwrap()
+                    .as_mut_ptr()
+                }
             }
         };
 
@@ -95,11 +122,16 @@ impl<T> RawVec<T> {
 impl<T> Drop for RawVec<T> {
     fn drop(&mut self) {
         let elem_size = mem::size_of::<T>();
+        let core_ids = core_affinity::get_core_ids().unwrap()[0].id;
 
         if self.cap != 0 && elem_size != 0 {
             //println!("Drop::RawVec<T> {}", self.ptr.as_ptr() as u64);
             unsafe {
-                PMPOOL1.dealloc(self.ptr.as_ptr() as *const core::ffi::c_void);
+                if core_ids < 20 {
+                    PMPOOL1.dealloc(self.ptr.as_ptr() as *const core::ffi::c_void);
+                } else {
+                    PMPOOL2.dealloc(self.ptr.as_ptr() as *const core::ffi::c_void);
+                }
             }
         }
     }

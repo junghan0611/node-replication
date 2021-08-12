@@ -42,6 +42,8 @@ pub use crate::utils::topology::ThreadMapping;
 
 use arr_macro::arr;
 
+//use log::{info, warn, trace};
+
 /// Threshold after how many iterations we log a warning for busy spinning loops.
 ///
 /// This helps with debugging to figure out where things may end up blocking.
@@ -662,6 +664,7 @@ where
         let do_sync = self.sync;
 
         debug!(
+        //println!(
             "Execute benchmark {} with the following replica: [core_id] mapping: {:#?}",
             self.name, self.rm
         );
@@ -845,6 +848,7 @@ where
         debug_assert_eq!(ts, cpus.len());
 
         trace!(
+        //println!(
             "Allocated cores for benchmark with {:?} {:?} {:?}",
             rs,
             tm,
