@@ -18,7 +18,7 @@ use super::log::Log;
 use super::rwlock::RwLock;
 use super::Dispatch;
 
-//use crate::PMPOOL;
+pub use crate::pvec::PVec;
 
 /// A token handed out to threads registered with replicas.
 ///
@@ -92,12 +92,12 @@ where
     /// cannot perform flat combining (because another thread might be doing so).
     ///
     /// The vector is initialized with `MAX_THREADS_PER_REPLICA` elements.
-    contexts: Vec<Context<<D as Dispatch>::WriteOperation, <D as Dispatch>::Response>>,
+    contexts: PVec<Context<<D as Dispatch>::WriteOperation, <D as Dispatch>::Response>>,
 
     /// A buffer of operations for flat combining. The combiner stages operations in
     /// here and then batch appends them into the shared log. This helps amortize
     /// the cost of the compare_and_swap() on the tail of the log.
-    buffer: RefCell<Vec<<D as Dispatch>::WriteOperation>>,
+    buffer: RefCell<PVec<<D as Dispatch>::WriteOperation>>,
 
     /// Number of operations collected by the combiner from each thread at any
     /// given point of time. Index `i` holds the number of operations collected from
@@ -106,7 +106,7 @@ where
 
     /// A buffer of results collected after flat combining. With the help of `inflight`,
     /// the combiner enqueues these results into the appropriate thread context.
-    result: RefCell<Vec<<D as Dispatch>::Response>>,
+    result: RefCell<PVec<<D as Dispatch>::Response>>,
 
     /// Reference to the shared log that operations will be appended to and the
     /// data structure will be updated from.
@@ -114,7 +114,7 @@ where
 
     /// The underlying replicated data structure. Shared between threads registered
     /// with this replica. Each replica maintains its own.
-    pub data: CachePadded<RwLock<D>>,
+    data: CachePadded<RwLock<D>>,
 }
 
 /// The Replica is Sync. Member variables are protected by a CAS on `combiner`.
@@ -196,10 +196,10 @@ where
                 idx: log.register().unwrap(),
                 combiner: CachePadded::new(AtomicUsize::new(0)),
                 next: CachePadded::new(AtomicUsize::new(1)),
-                contexts: Vec::with_capacity(MAX_THREADS_PER_REPLICA),
+                contexts: PVec::with_capacity(MAX_THREADS_PER_REPLICA),
                 buffer:
                     RefCell::new(
-                        Vec::with_capacity(
+                        PVec::with_capacity(
                             MAX_THREADS_PER_REPLICA
                                 * Context::<
                                     <D as Dispatch>::WriteOperation,
@@ -210,7 +210,7 @@ where
                 inflight: RefCell::new(arr![Default::default(); 256]),
                 result:
                     RefCell::new(
-                        Vec::with_capacity(
+                        PVec::with_capacity(
                             MAX_THREADS_PER_REPLICA
                                 * Context::<
                                     <D as Dispatch>::WriteOperation,

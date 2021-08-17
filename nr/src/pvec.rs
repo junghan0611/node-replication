@@ -28,7 +28,7 @@ impl<T> RawVec<T> {
         // !0 is usize::MAX. This branch should be stripped at compile time.
         let cap = if mem::size_of::<T>() == 0 { !0 } else { 0 };
 
-        println!("PVec::new()");
+        //println!("PVec::new()");
 
         // `NonNull::dangling()` doubles as "unallocated" and "zero-sized allocation"
         RawVec {
@@ -45,21 +45,24 @@ impl<T> RawVec<T> {
             capacity
         };
         let size = new_cap * mem::size_of::<T>();
-        
-        println!("PVec::with_capacity {}", capacity);
+
+        //println!("PVec::with_capacity {}", capacity);
 
         // Ensure that the new allocation doesn't exceed `isize::MAX` bytes.
         assert!(new_cap <= isize::MAX as usize, "Allocation too large");
 
+        let core_ids = 0;
+        #[cfg(feature = "dualpool")]
         let core_ids = core_affinity::get_core_ids().unwrap()[0].id;
 
-        let new_ptr = NonNull::new(unsafe { 
+        let new_ptr = NonNull::new(unsafe {
             if core_ids < 20 {
                 PMPOOL1.allocate(size, 0 as u64, None).unwrap().as_mut_ptr()
             } else {
                 PMPOOL2.allocate(size, 0 as u64, None).unwrap().as_mut_ptr()
             }
-        } as *mut T).unwrap();
+        } as *mut T)
+        .unwrap();
 
         RawVec {
             ptr: new_ptr,
@@ -79,15 +82,17 @@ impl<T> RawVec<T> {
         // Ensure that the new allocation doesn't exceed `isize::MAX` bytes.
         assert!(new_cap <= isize::MAX as usize, "Allocation too large");
 
+        let core_ids = 0;
+        #[cfg(feature = "dualpool")]
         let core_ids = core_affinity::get_core_ids().unwrap()[0].id;
 
         let new_ptr = if self.cap == 0 {
             //println!("grow:: cap==0 size {}", size);
-            unsafe { 
+            unsafe {
                 if core_ids < 20 {
-                    PMPOOL1.allocate(size, 0 as u64, None).unwrap().as_mut_ptr() 
+                    PMPOOL1.allocate(size, 0 as u64, None).unwrap().as_mut_ptr()
                 } else {
-                    PMPOOL2.allocate(size, 0 as u64, None).unwrap().as_mut_ptr() 
+                    PMPOOL2.allocate(size, 0 as u64, None).unwrap().as_mut_ptr()
                 }
             }
         } else {
@@ -97,14 +102,14 @@ impl<T> RawVec<T> {
             unsafe {
                 if core_ids < 20 {
                     PMPOOL1
-                    .reallocate(old_ptr as *const core::ffi::c_void, size, 0 as u64)
-                    .unwrap()
-                    .as_mut_ptr()
+                        .reallocate(old_ptr as *const core::ffi::c_void, size, 0 as u64)
+                        .unwrap()
+                        .as_mut_ptr()
                 } else {
                     PMPOOL2
-                    .reallocate(old_ptr as *const core::ffi::c_void, size, 0 as u64)
-                    .unwrap()
-                    .as_mut_ptr()
+                        .reallocate(old_ptr as *const core::ffi::c_void, size, 0 as u64)
+                        .unwrap()
+                        .as_mut_ptr()
                 }
             }
         };
@@ -122,6 +127,9 @@ impl<T> RawVec<T> {
 impl<T> Drop for RawVec<T> {
     fn drop(&mut self) {
         let elem_size = mem::size_of::<T>();
+
+        let core_ids = 0;
+        #[cfg(feature = "dualpool")]
         let core_ids = core_affinity::get_core_ids().unwrap()[0].id;
 
         if self.cap != 0 && elem_size != 0 {
@@ -144,7 +152,7 @@ pub struct PVec<T> {
 }
 
 impl<T> Default for PVec<T> {
-    fn default() -> PVec<T> {        
+    fn default() -> PVec<T> {
         PVec {
             buf: RawVec::new(),
             len: 0,
@@ -277,6 +285,25 @@ impl<T> PVec<T> {
                 iter: iter,
                 vec: PhantomData,
             }
+        }
+    }
+
+    pub fn clear(&mut self) {
+        self.truncate(0)
+    }
+
+    pub fn truncate(&mut self, len: usize) {
+        unsafe {
+            // Note: It's intentional that this is `>` and not `>=`.
+            //       Changing it to `>=` has negative performance
+            //       implications in some cases. See #78884 for more.
+            if len > self.len {
+                return;
+            }
+            let remaining_len = self.len - len;
+            let s = ptr::slice_from_raw_parts_mut(self.as_mut_ptr().add(len), remaining_len);
+            self.len = len;
+            ptr::drop_in_place(s);
         }
     }
 }

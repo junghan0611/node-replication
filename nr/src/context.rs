@@ -1,11 +1,12 @@
 // Copyright © 2019-2020 VMware, Inc. All Rights Reserved.
 // SPDX-License-Identifier: Apache-2.0 OR MIT
 
-use alloc::vec::Vec;
+//use alloc::vec::Vec;
 use core::cell::Cell;
 use core::default::Default;
 
 use crossbeam_utils::CachePadded;
+pub use crate::pvec::PVec;
 
 /// The maximum number of operations that can be batched inside this context.
 /// NOTE: This constant must be a power of two for index() to work.
@@ -133,7 +134,7 @@ where
     /// Adds any pending operations on this context to a passed in buffer. Returns the
     /// the number of such operations that were added in.
     #[inline(always)]
-    pub(crate) fn ops(&self, buffer: &mut Vec<T>) -> usize {
+    pub(crate) fn ops(&self, buffer: &mut PVec<T>) -> usize {
         let mut h = self.comb.get();
         let t = self.tail.get();
 
