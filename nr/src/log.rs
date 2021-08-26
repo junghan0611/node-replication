@@ -16,7 +16,7 @@ use crossbeam_utils::CachePadded;
 use crate::context::MAX_PENDING_OPS;
 use crate::replica::MAX_THREADS_PER_REPLICA;
 
-use crate::PMPOOL1;
+//use crate::PMPOOL1;
 
 /// The default size of the shared log in bytes. If constructed using the
 /// default constructor, the log will be these many bytes in size. Currently
@@ -180,6 +180,9 @@ where
     /// will be performed once this method returns.    
     pub fn new<'b>(bytes: usize) -> Log<'b, T> {
         use arr_macro::arr;
+
+        #[cfg(feature = "dualpool")]
+        println!{"DualPool"};
 
         // Calculate the number of entries that will go into the log, and retrieve a
         // slice to it from the allocated region of memory.

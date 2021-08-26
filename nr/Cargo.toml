@@ -19,6 +19,8 @@ pmdk-sys = { path = "../../lib/pmdk-rs/pmdk-sys"}
 pmdk = { path = "../../lib/pmdk-rs" }
 lazy_static = "1.4.0"
 core_affinity = "0.5.10"
+hwloc2 = "2.2.0"
+libc = "0.2"
 
 # Add debug symbols on the release build so that we can debug performance issues
 [profile.release]
@@ -27,3 +29,6 @@ debug = true
 [dev-dependencies]
 chashmap = "2.2"
 rand = { version = "0.7", features = ["small_rng"] }
+
+[features]
+dualpool = []

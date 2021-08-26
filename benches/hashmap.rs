@@ -29,6 +29,11 @@ use utils::benchmark::*;
 use utils::topology::ThreadMapping;
 use utils::Operation;
 
+use std::fs::File;
+use std::sync::{Arc, Barrier, Mutex};
+use std::io::{BufRead, BufReader, Write};
+use std::os::unix::prelude::FileExt;
+
 /// The initial amount of entries all Hashmaps are initialized with
 #[cfg(feature = "smokebench")]
 pub const INITIAL_CAPACITY: usize = 1 << 22; // ~ 4M
@@ -166,7 +171,7 @@ pub fn generate_operations(
 
     ops.shuffle(&mut t_rng);
     ops
-}
+} 
 
 /// Generate a random sequence of operations
 ///
@@ -231,6 +236,140 @@ fn hashmap_single_threaded(c: &mut TestHarness) {
     println!("hashmap_single_threaded");
 }
 
+const K_CHECKPOINT_SECONDS: u64 = 30;
+const K_COMPLETE_PENDING_INTERVAL: usize = 1600;
+const K_REFRESH_INTERVAL: usize = 64;
+//const K_RUN_TIME: u64 = 360;
+const K_RUN_TIME: u64 = 60;
+//const K_CHUNK_SIZE: usize = 3200;
+const K_CHUNK_SIZE: usize = 4000;
+const K_FILE_CHUNK_SIZE: usize = 131072;
+
+//const K_INIT_COUNT: usize = 250000000;
+//const K_TXN_COUNT: usize = 1000000000;
+
+const K_INIT_COUNT: usize = 25000000;                             
+const K_TXN_COUNT: usize = 50000000;
+
+const K_NANOS_PER_SECOND: usize = 1000000000;
+
+const K_THREAD_STACK_SIZE: usize = 4 * 1024 * 1024;
+
+// for ycsb
+pub fn load_files(load_file: &str, run_file: &str) -> (Vec<u64>, Vec<u64>) {
+    let load_file = File::open(load_file).expect("Unable to open load file");
+    let run_file = File::open(run_file).expect("Unable to open run file");
+
+    let mut buffer = [0; K_FILE_CHUNK_SIZE];
+    let mut count = 0;
+    let mut offset = 0;
+
+    let mut init_keys: Vec<Operation<OpRd, OpWr>> = Vec::with_capacity(K_INIT_COUNT);
+
+    println!("Loading keys into memory");
+    loop {
+        let bytes_read = load_file.read_at(&mut buffer, offset).unwrap();
+        for i in 0..(bytes_read / 8) {
+            let mut num = [0; 8];
+            num.copy_from_slice(&buffer[i..i + 8]);
+            //init_keys.insert(count, u64::from_be_bytes(num));
+
+            init_keys.push(Operation::WriteOperation(OpWr::Put(u64::from_be_bytes(num), u64::from_be_bytes(num))));
+            //ops.push(Operation::ReadOperation(OpRd::Get(id)));
+            
+            count += 1;
+        }
+        if bytes_read == K_FILE_CHUNK_SIZE {
+            offset += K_FILE_CHUNK_SIZE as u64;
+        } else {
+            break;
+        }
+    }
+    if K_INIT_COUNT != count {
+        panic!("Init file load fail!");
+    }
+    println!("Loaded {} keys", count);
+
+    let mut count = 0;
+    let mut offset = 0;
+
+    let mut run_keys = Vec::with_capacity(K_TXN_COUNT);
+
+    println!("Loading txns into memory");
+    loop {
+        let bytes_read = run_file.read_at(&mut buffer, offset).unwrap();
+        for i in 0..(bytes_read / 8) {
+            let mut num = [0; 8];
+            num.copy_from_slice(&buffer[i..i + 8]);
+            //println!("{}:{}", count, u64::from_be_bytes(num));
+            run_keys.insert(count, u64::from_be_bytes(num));
+            count += 1;
+        }
+        if bytes_read == K_FILE_CHUNK_SIZE {
+            offset += K_FILE_CHUNK_SIZE as u64;
+        } else {
+            break;
+        }
+    }
+    if K_TXN_COUNT != count {
+        panic!("Txn file load fail!");
+    }
+    println!("Loaded {} txns", count);
+
+    (init_keys, run_keys)
+}
+
+/// Compare scale-out behaviour of synthetic data-structure.
+fn hashmap_scale_out_ycsb<R>(c: &mut TestHarness, name: &str, write_ratio: usize)
+where
+    R: ReplicaTrait + Send + Sync + 'static,
+    R::D: Send,
+    R::D: Dispatch<ReadOperation = OpRd>,
+    R::D: Dispatch<WriteOperation = OpWr>,
+    <R::D as Dispatch>::WriteOperation: Send + Sync,
+    <R::D as Dispatch>::ReadOperation: Send + Sync,
+    <R::D as Dispatch>::Response: Sync + Send + Debug,
+{
+    let ops = generate_operations(NOP, write_ratio, KEY_SPACE, UNIFORM);
+    let bench_name = format!("{}-ycsb-scaleout-wr{}", name, write_ratio);
+
+    let load_keys_file = "/home/junghan/workspace/workloads/zipf-workload-loada-25M.dat";    
+    let run_keys_file = "/home/junghan/workspace/workloads/zipf-workload-runa-50M.dat";
+
+    //let store = Arc::new(FasterKvBuilder::new(table_size, log_size).with_disk(&dir_path).build().unwrap());
+    let (load_keys, txn_keys) = load_files(load_keys_file, run_keys_file);
+    let load_keys = Arc::new(load_keys);
+    let txn_keys = Arc::new(txn_keys);
+    
+    println!("Populating datastore");
+    //populate_store(&store, &load_keys, num_threads);
+
+    println!("Beginning benchmark");
+    //run_benchmark(&store, &txn_keys, num_threads, op_allocator);
+
+    mkbench::ScaleBenchBuilder::<R>::new(ops)
+        .thread_defaults()
+        .update_batch(128)
+        .log_size(32 * 1024 * 1024)
+        .replica_strategy(mkbench::ReplicaStrategy::One)
+        //.replica_strategy(mkbench::ReplicaStrategy::Socket)
+        .thread_mapping(ThreadMapping::Interleave)
+        .log_strategy(mkbench::LogStrategy::One)
+        .configure(
+            c,
+            &bench_name,
+            |_cid, rid, _log, replica, op, _batch_size| match op {
+                Operation::ReadOperation(op) => {
+                    replica.exec_ro(*op, rid);
+                }
+                Operation::WriteOperation(op) => {
+                    replica.exec(*op, rid);
+                }
+            },
+        );
+
+}
+
 /// Compare scale-out behaviour of synthetic data-structure.
 fn hashmap_scale_out<R>(c: &mut TestHarness, name: &str, write_ratio: usize)
 where
@@ -249,8 +388,8 @@ where
         .thread_defaults()
         .update_batch(128)
         .log_size(32 * 1024 * 1024)
-        //.replica_strategy(mkbench::ReplicaStrategy::One)
-        .replica_strategy(mkbench::ReplicaStrategy::Socket)
+        .replica_strategy(mkbench::ReplicaStrategy::One)
+        //.replica_strategy(mkbench::ReplicaStrategy::Socket)
         .thread_mapping(ThreadMapping::Interleave)
         .log_strategy(mkbench::LogStrategy::One)
         .configure(
@@ -341,6 +480,11 @@ fn main() {
     }
 
     hashmap_single_threaded(&mut harness);
+
+    hashmap_scale_out_ycsb::<Replica<NrHashMap>>(&mut harness, "hashmap", 0);
+
+    return;
+
     for write_ratio in write_ratios.into_iter() {
         hashmap_scale_out::<Replica<NrHashMap>>(&mut harness, "hashmap", write_ratio);
 

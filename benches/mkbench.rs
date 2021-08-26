@@ -610,6 +610,7 @@ where
         0usize
     }
 
+    // 이 함수를 어떤 조건에서 호출하는지 보자. 
     fn alloc_replicas(&mut self, replicas: &mut Vec<Arc<R>>) {
         let mut handles = Vec::with_capacity(self.rm.len());
         for (rid, cores) in self.rm.clone().into_iter() {
@@ -1129,6 +1130,7 @@ where
                                 LogStrategy::Custom(v) => v,
                             };
 
+                            // 실험 시 로그를 생성한다. -- 개념상 맞다. 
                             let log = {
                                 let mut logs = Vec::with_capacity(num_logs);
                                 for i in 0..num_logs {
@@ -1148,6 +1150,8 @@ where
                                 }
                                 logs
                             };
+
+                            // YCSB라면, 매번 LOAD를 하고 RUN을 해야한다. -- ScaleBenchmark가 뻘짓하는게 없는지 확인해야 한다. 
 
                             let mut runner = ScaleBenchmark::<R>::new(
                                 String::from(name),
@@ -1175,6 +1179,8 @@ where
                                 },
                             );
 
+                            // PM을 해지해야 되는거 아닌가? deallocate 하고 
+                            // 다시 할당해야 제대로 실험이 될 것 같은데?!
                             runner
                                 .terminate()
                                 .expect("Couldn't terminate the experiment");
