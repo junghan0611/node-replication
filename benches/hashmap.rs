@@ -101,8 +101,8 @@ impl Default for NrHashMap {
     /// Return a dummy hash-map with `INITIAL_CAPACITY` elements.
     fn default() -> NrHashMap {
         println!{"Default:NrHashMap 1: INITIAL_CAPACITY {}", INITIAL_CAPACITY};
-        //let mut storage = PHashMap::with_capacity(INITIAL_CAPACITY);
-        let mut storage = PHashMap::new();
+        let mut storage = PHashMap::with_capacity(INITIAL_CAPACITY);
+        //let mut storage = PHashMap::new();
         for i in 0..INITIAL_CAPACITY {
             //println!{"Default:NrHashMap Insert {}", i};
             storage.insert(i as u64, (i + 1) as u64);
@@ -236,8 +236,7 @@ fn hashmap_single_threaded(c: &mut TestHarness) {
     println!("hashmap_single_threaded");
 }
 
-
-
+/*
 /// Compare scale-out behaviour of synthetic data-structure.
 fn hashmap_scale_out_ycsb<R>(c: &mut TestHarness, name: &str, write_ratio: usize)
 where
@@ -256,7 +255,7 @@ where
     let run_keys_file = "/home/junghan/workspace/workloads/zipf-workload-runa-50M.dat";
 
     //let store = Arc::new(FasterKvBuilder::new(table_size, log_size).with_disk(&dir_path).build().unwrap());
-    let (load_keys, txn_keys) = load_files(load_keys_file, run_keys_file);
+    //let (load_keys, txn_keys) = load_files(load_keys_file, run_keys_file);
     let load_keys = Arc::new(load_keys);
     let txn_keys = Arc::new(txn_keys);
     
@@ -270,8 +269,8 @@ where
         .thread_defaults()
         .update_batch(128)
         .log_size(32 * 1024 * 1024)
-        .replica_strategy(mkbench::ReplicaStrategy::One)
-        //.replica_strategy(mkbench::ReplicaStrategy::Socket)
+        //.replica_strategy(mkbench::ReplicaStrategy::One)
+        .replica_strategy(mkbench::ReplicaStrategy::Socket)
         .thread_mapping(ThreadMapping::Interleave)
         .log_strategy(mkbench::LogStrategy::One)
         .configure(
@@ -288,6 +287,7 @@ where
         );
 
 }
+*/
 
 /// Compare scale-out behaviour of synthetic data-structure.
 fn hashmap_scale_out<R>(c: &mut TestHarness, name: &str, write_ratio: usize)
@@ -308,7 +308,7 @@ where
         .update_batch(128)
         .log_size(32 * 1024 * 1024)
         .replica_strategy(mkbench::ReplicaStrategy::One)
-        //.replica_strategy(mkbench::ReplicaStrategy::Socket)
+        .replica_strategy(mkbench::ReplicaStrategy::Socket)
         .thread_mapping(ThreadMapping::Interleave)
         .log_strategy(mkbench::LogStrategy::One)
         .configure(
@@ -392,7 +392,7 @@ fn main() {
     let mut harness = Default::default();
     //let write_ratios = vec![0, 10, 20, 40, 60, 80, 100];
     //let write_ratios = vec![0, 10, 80];
-    let write_ratios = vec![0, 10];
+    let write_ratios = vec![0];
 
     unsafe {
         urcu_sys::rcu_init();
@@ -400,9 +400,8 @@ fn main() {
 
     hashmap_single_threaded(&mut harness);
 
-    hashmap_scale_out_ycsb::<Replica<NrHashMap>>(&mut harness, "hashmap", 0);
-
-    return;
+    /*hashmap_scale_out_ycsb::<Replica<NrHashMap>>(&mut harness, "hashmap", 0);
+    return;*/
 
     for write_ratio in write_ratios.into_iter() {
         hashmap_scale_out::<Replica<NrHashMap>>(&mut harness, "hashmap", write_ratio);

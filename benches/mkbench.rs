@@ -858,22 +858,121 @@ where
         let mut rm: HashMap<usize, Vec<Cpu>> = HashMap::new();
 
         match rs {
-            ReplicaStrategy::One => {
-                rm.insert(0, cpus.iter().map(|c| c.cpu).collect());
+            ReplicaStrategy::One => match tm {                
+                ThreadMapping::None => {}
+                ThreadMapping::Sequential => {
+                    rm.insert(0, cpus.iter().map(|c| c.cpu).collect());
+                }
+                ThreadMapping::Interleave => {                   
+                    if (ts == 1) {
+                        let socket0 = vec![1];                        
+                        rm.insert(0, socket0);                        
+                    } else if (ts == 5) {
+                        let socket0 = vec![0,1,2];
+                        let socket1 = vec![20,21];
+                        rm.insert(0, socket0);
+                        rm.insert(1, socket1);
+                    } else if (ts == 10) {
+                        let socket0 = vec![0,1,2,3,4];
+                        let socket1 = vec![20,21,22,23,24];
+                        rm.insert(0, socket0);
+                        rm.insert(1, socket1);
+                    } else if (ts == 15) {
+                        let socket0 = vec![0,1,2,3,4,5,6,7];
+                        let socket1 = vec![20,21,22,23,24,25,26];
+                        rm.insert(0, socket0);
+                        rm.insert(1, socket1);
+                    } else if (ts == 20) {
+                        let socket0 = vec![0,1,2,3,4,5,6,7,8,9];
+                        let socket1 = vec![20,21,22,23,24,25,26,27,28,29];
+                        rm.insert(0, socket0);
+                        rm.insert(1, socket1);
+                    } else if (ts == 25) {
+                        let socket0 = vec![0,1,2,3,4,5,6,7,8,9,10,11,12];
+                        let socket1 = vec![20,21,22,23,24,25,26,27,28,29,30,31];
+                        rm.insert(0, socket0);
+                        rm.insert(1, socket1);
+                    } else if (ts == 30) {
+                        let socket0 = vec![0,1,2,3,4,5,6,7,8,9,10,11,12,13,14];
+                        let socket1 = vec![20,21,22,23,24,25,26,27,28,29,30,31,32,33,34];
+                        rm.insert(0, socket0);
+                        rm.insert(1, socket1);
+                    } else if (ts == 35) {
+                        let socket0 = vec![0,1,2,3,4,5,6,7,8,9,10,11,12,13,14,15,16,17];
+                        let socket1 = vec![20,21,22,23,24,25,26,27,28,29,30,31,32,33,34,35,36];
+                        rm.insert(0, socket0);
+                        rm.insert(1, socket1);
+                    } else if (ts == 40) {
+                        let socket0 = vec![0,1,2,3,4,5,6,7,8,9,10,11,12,13,14,15,16,17,18,19];
+                        let socket1 = vec![20,21,22,23,24,25,26,27,28,29,30,31,32,33,34,35,36,37,38,39];
+                        rm.insert(0, socket0);
+                        rm.insert(1, socket1);
+                    }
+                }
             }
-            ReplicaStrategy::Socket => {
-                let mut sockets: Vec<Socket> = cpus.iter().map(|t| t.socket).collect();
-                sockets.sort();
-                sockets.dedup();
+            ReplicaStrategy::Socket => match tm {
+                ThreadMapping::None => {}
+                ThreadMapping::Sequential => {
+                    let mut sockets: Vec<Socket> = cpus.iter().map(|t| t.socket).collect();
+                    sockets.sort();
+                    sockets.dedup();
 
-                for s in sockets {
-                    rm.insert(
-                        s as usize,
-                        cpus.iter()
-                            .filter(|c| c.socket == s)
-                            .map(|c| c.cpu)
-                            .collect(),
-                    );
+                    for s in sockets {
+                        rm.insert(
+                            s as usize,
+                            cpus.iter()
+                                .filter(|c| c.socket == s)
+                                .map(|c| c.cpu)
+                                .collect(),
+                        );
+                        //println!{"s {} ts {}", s, ts};
+                    }
+                }
+                ThreadMapping::Interleave => {                   
+                    if (ts == 1) {
+                        let socket0 = vec![1];                        
+                        rm.insert(0, socket0);                        
+                    } else if (ts == 5) {
+                        let socket0 = vec![0,1,2];
+                        let socket1 = vec![20,21];
+                        rm.insert(0, socket0);
+                        rm.insert(1, socket1);
+                    } else if (ts == 10) {
+                        let socket0 = vec![0,1,2,3,4];
+                        let socket1 = vec![20,21,22,23,24];
+                        rm.insert(0, socket0);
+                        rm.insert(1, socket1);
+                    } else if (ts == 15) {
+                        let socket0 = vec![0,1,2,3,4,5,6,7];
+                        let socket1 = vec![20,21,22,23,24,25,26];
+                        rm.insert(0, socket0);
+                        rm.insert(1, socket1);
+                    } else if (ts == 20) {
+                        let socket0 = vec![0,1,2,3,4,5,6,7,8,9];
+                        let socket1 = vec![20,21,22,23,24,25,26,27,28,29];
+                        rm.insert(0, socket0);
+                        rm.insert(1, socket1);
+                    } else if (ts == 25) {
+                        let socket0 = vec![0,1,2,3,4,5,6,7,8,9,10,11,12];
+                        let socket1 = vec![20,21,22,23,24,25,26,27,28,29,30,31];
+                        rm.insert(0, socket0);
+                        rm.insert(1, socket1);
+                    } else if (ts == 30) {
+                        let socket0 = vec![0,1,2,3,4,5,6,7,8,9,10,11,12,13,14];
+                        let socket1 = vec![20,21,22,23,24,25,26,27,28,29,30,31,32,33,34];
+                        rm.insert(0, socket0);
+                        rm.insert(1, socket1);
+                    } else if (ts == 35) {
+                        let socket0 = vec![0,1,2,3,4,5,6,7,8,9,10,11,12,13,14,15,16,17];
+                        let socket1 = vec![20,21,22,23,24,25,26,27,28,29,30,31,32,33,34,35,36];
+                        rm.insert(0, socket0);
+                        rm.insert(1, socket1);
+                    } else if (ts == 40) {
+                        let socket0 = vec![0,1,2,3,4,5,6,7,8,9,10,11,12,13,14,15,16,17,18,19];
+                        let socket1 = vec![20,21,22,23,24,25,26,27,28,29,30,31,32,33,34,35,36,37,38,39];
+                        rm.insert(0, socket0);
+                        rm.insert(1, socket1);
+                    }
                 }
             }
             ReplicaStrategy::L1 => match tm {
@@ -888,7 +987,7 @@ where
                             s as usize,
                             cpus.iter().filter(|c| c.l1 == s).map(|c| c.cpu).collect(),
                         );
-                    }
+                    }               
                 }
                 // Giving replica number based on L1 number won't work in this case, as the
                 // L1 numbers are allocated to Node-0 first and then to Node-1, and so on.
@@ -1007,7 +1106,8 @@ where
             threads: Vec::new(),
             batches: vec![1usize],
             sync: true,
-            log_size: 1024 * 1024 * 2,
+            //log_size: 1024 * 1024 * 2,
+            log_size: 1024 * 1024 * 32,
             reset_log: false,
             operations: ops,
             _marker: PhantomData,
@@ -1016,7 +1116,7 @@ where
 
     /// Configures the builder automatically based on the underlying machine properties.
     pub fn machine_defaults(&mut self) -> &mut Self {
-        self.thread_mapping(ThreadMapping::Sequential);
+        //self.thread_mapping(ThreadMapping::Sequential);
         self.replica_strategy(ReplicaStrategy::One);
         self.replica_strategy(ReplicaStrategy::Socket);
         //self.replica_strategy(ReplicaStrategy::L1);

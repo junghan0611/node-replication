@@ -19,6 +19,7 @@ mod utils;
 
 use utils::benchmark::*;
 use utils::Operation;
+use utils::topology::ThreadMapping;
 
 /// Operations we can perform on the stack.
 #[derive(Debug, Eq, PartialEq, Clone, Copy)]
@@ -121,7 +122,12 @@ fn stack_scale_out(c: &mut TestHarness) {
     let ops = generate_operations(NOP);
 
     mkbench::ScaleBenchBuilder::<Replica<Stack>>::new(ops)
-        .machine_defaults()
+        //.machine_defaults()
+        .thread_defaults()
+        //.replica_strategy(mkbench::ReplicaStrategy::One)
+        .replica_strategy(mkbench::ReplicaStrategy::Socket)
+        .thread_mapping(ThreadMapping::Interleave)        
+        //.thread_mapping(ThreadMapping::Sequential)        
         .log_strategy(mkbench::LogStrategy::One)
         .configure(
             c,
