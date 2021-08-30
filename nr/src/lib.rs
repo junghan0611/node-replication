@@ -108,6 +108,7 @@ extern crate lazy_static;
 lazy_static! {
     pub static ref PMPOOL1: pmdk::ObjPool = {
         let path = String::from("/mnt/pmem0/test.pool");
+        //let path = String::from("/mnt/pmem1/test.pool");
         //let path = String::from("/dev/shm/pmem0/test.pool");
         let mut pool = pmdk::ObjPool::new::<_, String>(path, None, 0x1000, 0x10000_0000 / 0x1000).unwrap();
         pool.set_rm_on_drop(true);
@@ -115,6 +116,7 @@ lazy_static! {
     };    
     pub static ref PMPOOL2: pmdk::ObjPool = {
         let path = String::from("/mnt/pmem1/test.pool");
+        //let path = String::from("/mnt/pmem0/test.pool");
         //let path = String::from("/dev/shm/pmem1/test.pool");
         let mut pool = pmdk::ObjPool::new::<_, String>(path, None, 0x1000, 0x10000_0000 / 0x1000).unwrap();
         pool.set_rm_on_drop(true);

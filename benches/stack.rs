@@ -95,6 +95,7 @@ pub fn generate_operations(nop: usize) -> Vec<Operation<OpRd, OpWr>> {
     let mut ops = Vec::with_capacity(nop);
     for _i in 0..nop {
         let op: usize = orng.gen();
+       // let op: usize = _i;
         match op % 2usize {
             0usize => ops.push(Operation::WriteOperation(OpWr::Pop)),
             1usize => ops.push(Operation::WriteOperation(OpWr::Push(arng.gen()))),
@@ -124,10 +125,10 @@ fn stack_scale_out(c: &mut TestHarness) {
     mkbench::ScaleBenchBuilder::<Replica<Stack>>::new(ops)
         //.machine_defaults()
         .thread_defaults()
-        //.replica_strategy(mkbench::ReplicaStrategy::One)
+        .replica_strategy(mkbench::ReplicaStrategy::One)
         .replica_strategy(mkbench::ReplicaStrategy::Socket)
-        .thread_mapping(ThreadMapping::Interleave)        
-        //.thread_mapping(ThreadMapping::Sequential)        
+        //.thread_mapping(ThreadMapping::Interleave)        
+        .thread_mapping(ThreadMapping::Sequential)        
         .log_strategy(mkbench::LogStrategy::One)
         .configure(
             c,
