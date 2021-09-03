@@ -309,8 +309,7 @@ where
         .log_size(32 * 1024 * 1024)
         .replica_strategy(mkbench::ReplicaStrategy::One)
         .replica_strategy(mkbench::ReplicaStrategy::Socket)
-        //.thread_mapping(ThreadMapping::Interleave)
-        .thread_mapping(ThreadMapping::Sequential)
+        .thread_mapping(ThreadMapping::Interleave)
         .log_strategy(mkbench::LogStrategy::One)
         .configure(
             c,
@@ -393,7 +392,7 @@ fn main() {
     let mut harness = Default::default();
     //let write_ratios = vec![0, 10, 20, 40, 60, 80, 100];
     //let write_ratios = vec![0, 10, 80];
-    let write_ratios = vec![0, 10];
+    let write_ratios = vec![0];
 
     unsafe {
         urcu_sys::rcu_init();
